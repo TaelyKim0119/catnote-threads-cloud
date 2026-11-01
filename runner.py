@@ -114,7 +114,13 @@ def prepare(now: datetime, slot: str, api_key: str, recent: list[dict]) -> tuple
             state_path.write_text(json.dumps(item, ensure_ascii=False, indent=2), encoding="utf-8")
             return state_path, item
         except (ValueError, requests.RequestException, KeyError) as exc:
-            print(f"Candidate skipped: {type(exc).__name__}")
+            if isinstance(exc, ValueError):
+                detail = str(exc)[:180]
+            elif isinstance(exc, requests.HTTPError) and exc.response is not None:
+                detail = f"HTTP {exc.response.status_code}"
+            else:
+                detail = type(exc).__name__
+            print(f"Candidate skipped: {type(exc).__name__}: {detail}")
             continue
     raise RuntimeError("No current article passed official-source checks; nothing was posted")
 

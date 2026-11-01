@@ -151,7 +151,7 @@ def read_source(lead: Lead, url: str) -> Source | None:
     text = re.sub(r"\s+", " ", body.get_text(" ", strip=True)) if body else ""
     if len(text) < 450:
         return None
-    return Source(lead, response.url, title, " | ".join(meta), text[:40000])
+    return Source(lead, response.url, title, announced.isoformat() + " | " + " | ".join(meta), text[:40000])
 
 
 def official_feed_leads(now: datetime, used_urls: set[str], max_age_days: int = 7) -> list[Lead]:
