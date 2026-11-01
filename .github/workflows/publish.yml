@@ -1,0 +1,61 @@
+name: Catnote Threads pair
+
+on:
+  schedule:
+    - cron: '0,17 9,18 * * *'
+      timezone: Asia/Seoul
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: Pair to prepare or post
+        required: true
+        type: choice
+        options: [morning, evening]
+      dry_run:
+        description: Prepare a preview without posting
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: catnote-threads-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Korean font
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Python dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Prepare or publish pair
+        env:
+          CATNOTE_GEMINI_FREE_KEY: ${{ secrets.CATNOTE_GEMINI_FREE_KEY }}
+          CATNOTE_THREADS_BOOTSTRAP_TOKEN: ${{ secrets.CATNOTE_THREADS_BOOTSTRAP_TOKEN }}
+          CATNOTE_TOKEN_ENCRYPTION_KEY: ${{ secrets.CATNOTE_TOKEN_ENCRYPTION_KEY }}
+          CATNOTE_LIVE_ENABLED: ${{ vars.CATNOTE_LIVE_ENABLED }}
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SLOT="${{ inputs.slot }}"
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              python runner.py --slot "$SLOT" --dry-run
+            else
+              python runner.py --slot "$SLOT"
+            fi
+          else
+            HOUR=$(TZ=Asia/Seoul date +%H)
+            if [ "$HOUR" = "09" ]; then SLOT=morning; else SLOT=evening; fi
+            python runner.py --slot "$SLOT"
+          fi
